@@ -1,0 +1,49 @@
+# Created by https://www.toptal.com/developers/gitignore/api/java,maven,intellij
+# Edit at https://www.toptal.com/developers/gitignore?templates=java,maven,intellij
+
+### IntelliJ ###
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+# Sensitive or high-churn files
+.idea/**/dataSources/
+.idea/**/dataSources.ids
+.idea/**/dataSources.local.xml
+.idea/**/sqlDataSources.xml
+.idea/**/dynamic.xml
+.idea/**/uiDesigner.xml
+.idea/**/dbnavigator.xml
+
+# Maven
+.idea/**/maven.xml
+.idea/**/compiler.xml
+
+# File-based project format
+*.iws
+
+
+*.tar
+
+# Plugin-specific files
+
+# Rider
+.idea/**/riderModule.iml
+.idea/**/riderTextOutput.log
+
+### Java ###
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+
+### Maven ###
+target/
