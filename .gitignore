@@ -1,28 +1,27 @@
-# Dependencies
-node_modules/
-target/
-
-# Build outputs
-dist/
-build/
-.next/
-
-# Environment files
-.env
+# Environment variables with API keys
+operations-ui/.env.local
+operations-ui/.env
 .env.local
+.env
 
-# IDE
+# Node modules
+operations-ui/node_modules/
+**/node_modules/
+
+# Next.js build
+operations-ui/.next/
+operations-ui/out/
+
+# Maven/Java
+backend/target/
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+
+# IDE files
 .idea/
 .vscode/
 *.iml
 
-# OS
+# OS files
 .DS_Store
-Thumbs.db
-
-# Logs
-*.log
-npm-debug.log*
-
-# Docker
-*.tar
