@@ -1,21 +1,33 @@
 
 
-export interface Delivery {
+export interface PathSegment {
+    deliveryId?: number;
+    flightPath?: Array<{ lat: number; lng: number }>;
+    to?: { lat: number; lng: number };
+    from?: { lat: number; lng: number };
+    capacity?: number;
+    weight?: number;
+  }
+  
+  export interface Delivery {
     id: number;
+    weight: number;
+    location: string;
     date: string;
     time: string;
-    weight: number;
-    cooling?: boolean;
-    heating?: boolean;
-    location: {
+    cooling: boolean;
+    heating: boolean;
+    status: 'pending' | 'assigned' | 'in-flight' | 'delivered';
+    assignedDrone?: string;
+    cost?: number;
+    coordinates?: {
       lat: number;
       lng: number;
-      name?: string;
     };
-    status: 'pending' | 'assigned' | 'in-flight' | 'completed';
-    assignedDrone?: string;
-    estimatedCost?: number;
+    // ⭐ NEW: Store the actual path from backend
+    path?: PathSegment[];
   }
+  
   
   export interface Drone {
     id: string;

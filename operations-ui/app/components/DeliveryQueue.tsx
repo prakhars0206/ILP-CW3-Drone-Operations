@@ -38,6 +38,9 @@ export function DeliveryQueue() {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Time
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Cost
+                </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Requirements
               </th>
@@ -69,6 +72,10 @@ export function DeliveryQueue() {
                     <Clock className="w-4 h-4 mr-1 text-gray-400" />
                     {delivery.time}
                   </div>
+                </td>
+
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    £{delivery.cost?.toFixed(2) || '0.00'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex space-x-1">

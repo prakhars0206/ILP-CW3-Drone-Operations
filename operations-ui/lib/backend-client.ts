@@ -40,6 +40,7 @@ export class BackendClient {
   async calculateDeliveryPath(dispatches: any[]): Promise<any> {
     const url = `${this.baseUrl}/api/v1/calcDeliveryPath`;
     console.log('🌐 Calling:', url);
+    console.log('📦 With data:', JSON.stringify(dispatches, null, 2));
     
     try {
       const response = await fetch(url, {
@@ -47,17 +48,30 @@ export class BackendClient {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dispatches),
       });
-
+      
       console.log('📥 Response status:', response.status);
-
+      
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('❌ Backend error:', errorText);
-        throw new Error(`Backend error: ${response.status}`);
+        console.error('❌ Backend error response:', errorText);
+        throw new Error(`Backend error: ${response.status} - ${errorText}`);
       }
-
+      
       const result = await response.json();
-      console.log('✅ Path calculation result:', result);
+      console.log('✅ Backend result:', result);
+      
+      // ⭐ ADD THIS VALIDATION
+      const plannedCount = result.dronePaths?.reduce((sum: number, path: any) => 
+        sum + (path.deliveries?.length || 0), 0) || 0;
+      
+      if (plannedCount < dispatches.length) {
+        const warning = `⚠️ Only ${plannedCount} of ${dispatches.length} deliveries could be planned. Some locations may be out of range.`;
+        console.warn(warning);
+        result.warning = warning;
+        result.deliveriesPlanned = plannedCount;
+        result.deliveriesRequested = dispatches.length;
+      }
+      
       return result;
     } catch (error) {
       console.error('❌ Fetch failed:', error);
@@ -132,4 +146,6 @@ export class BackendClient {
       throw error;
     }
   }
+
+  
 }
