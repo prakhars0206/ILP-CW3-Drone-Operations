@@ -7,136 +7,153 @@
 
 ## 1. Priority and Prerequisites
 
-This section identifies testing priorities and prerequisites for three requirements demonstrating diverse testing needs.
+This section identifies testing priorities and prerequisites for **four** requirements. Per Y&P Ch3, we decompose these requirements to identify testable inputs, outputs, and invariants.
+
+### FR1: Pathfinding Completeness (Integration Level, Critical Priority)
+**Why Critical Priority:** This is the core function. Failure here renders the drone useless and risks safety (e.g., hitting No-Fly Zones). We allocate the highest resource testing here.
+
+**Specification Decomposition:**
+To apply the **Partition Principle** (Y&P Ch3), we decompose the pathfinder:
+- **Inputs:** `Start_Coord`, `End_Coord`, `Grid_State` (including obstacles/no-fly zones).
+- **Outputs:** `List<Position>` (Ordered sequence of nodes) OR `PathNotFoundException`.
+- **Invariant:** The output path must be continuous (distance between steps ≤ step size) and strictly optimal (lowest cost).
+
+**Testing Prerequisites:**
+- Requires the `AStarPathfinder` algorithm implementation.
+- Requires valid Geometry services (SR1) to calculate distances.
+- **Approach:** Structural (White-box) testing targeting loop boundaries (0, 1, many iterations).
 
 ### FR2: Cost Calculation Accuracy (Unit Level, High Priority)
+**Why High Priority:** Financial accuracy is essential for trust, though less safety-critical than FR1.
 
-**Why High Priority:** Financial accuracy is essential for budget planning. Incorrect costs erode trust and may cause hospital budget overruns. However, this is lower priority than safety-critical pathfinding since cost errors don't endanger patients.
+**Specification Decomposition:**
+- **Inputs:** `Drone_Config` (Base Cost, Cost Per Move), `Path_Length` (Integer moves).
+- **Outputs:** `Total_Cost` (BigDecimal).
+- **Formula:** `Cost = Base + (Moves * Rate) + Landing_Fee`.
+- **Invariant:** Cost must strictly increase with path length; cost cannot be negative.
 
 **Testing Prerequisites:**
-- Requires isolated component testing with mocked drone capabilities
-- Needs deterministic test data (known move counts, known cost parameters)
-- Fast feedback essential for TDD workflow during development
-- Multiple test approaches: boundary value analysis (0 moves, 1000+ moves), floating-point precision testing
-
-**Early Detection Strategy:** Unit tests run on every code change via IDE integration, catching errors within seconds rather than waiting for integration testing.
+- Requires isolated component testing with mocked drone capabilities.
+- Needs deterministic test data (known move counts).
+- **Approach:** Functional Partition testing (Boundary values: 0 moves, 1000+ moves).
 
 ### FR10: Response Schema Compatibility (Integration Level, Medium Priority)
+**Why Medium Priority:** Ensures the "Contract" between Backend (Java) and Frontend (TS) is valid. This is **Verification** (building the product right).
 
-**Why Medium Priority:** Schema mismatches cause runtime crashes, but errors are caught early in development. This is verification (does backend match our interface?) rather than validation (does it meet user needs?).
+**Specification Decomposition:**
+- **Inputs:** HTTP Request to `/api/v1/calculate-path` (Valid JSON Body).
+- **Outputs:** HTTP Response (Status 200 OK + JSON Body).
+- **Invariant:** The JSON keys and value types in the response must strictly match the TypeScript `DeliveryResponse` interface (e.g., camelCase `droneId`, not snake_case `drone_id`).
 
 **Testing Prerequisites:**
-- Requires both frontend TypeScript types and backend Java implementation
-- Real HTTP integration testing (mocks assume contract correctness)
-- Backend must be running and accessible
-- Multiple test approaches: type validation, structural testing, error response testing
-
-**Risk:** Schema tests cannot detect semantic errors (e.g., cost calculation returning wrong value but valid type). This is accepted since FR2 unit tests cover semantic correctness.
+- Requires both frontend TypeScript types and backend Java implementation.
+- Real HTTP integration testing (mocks assume contract correctness).
+- **Approach:** Automated Integration testing via custom harness.
 
 ### QA1: API Key Security (System Level, Critical Priority)
+**Why Critical Priority:** Safety/Security property. Regulatory requirement to prevent data/credential leakage.
 
-**Why Critical Priority:** Exposed API keys enable unauthorized usage costing thousands in API fees and violating service terms. This is a safety property with regulatory implications.
+**Specification Decomposition:**
+- **Inputs:** Production Build Artifacts (Minified JavaScript files in `.next/static/`).
+- **Outputs:** Boolean Verification Result (Pass/Fail).
+- **Invariant:** For all files in Artifacts, no string literal may match the Anthropic API key pattern (`sk-ant-\w+`).
 
 **Testing Prerequisites:**
-- Requires production build artifacts (.next/static/ directory)
-- Build process must complete successfully
-- Pattern matching for key formats (sk-ant-api03-...)
-- Multiple test approaches: static analysis, base64 detection, source map scanning
-
-**Redundancy:** Both development practices (environment variables only) and automated detection provide independent assurance per Ch3 redundancy principle.
+- Requires production build artifacts (`npm run build`).
+- **Approach:** Static Analysis (scanning compiled code for regex patterns).
 
 ---
 
 ## 2. Scaffolding and Instrumentation
 
-### FR2 Instrumentation
-
+### FR1 Instrumentation (Pathfinding)
 **Scaffolding Required:**
-- Mock factories for Drone objects with configurable costs (initial, per-move, final)
-- Mock geometry service returning predetermined path lengths
-- Test data builders for creating delivery requests with known parameters
+- **Graph Mocks:** Although we test integration, we need `AStarPathfinder` to run against a known grid (Graph) to verify it finds the *optimal* path, not just *any* path.
+- **Visualization:** Debug output enabled in `PathServiceImpl` to print ASCII representations of the grid during failing tests.
 
-**Instrumentation:** PathServiceImpl logs cost calculations during development, allowing manual verification during debugging. This temporary instrumentation is removed before production.
+**Instrumentation:** The `AStarPathfinder` class is instrumented with branch counters during JaCoCo execution to ensure we cover all edge relaxation cases (e.g., finding a better path to an already visited node).
+
+**Adequacy:** White-box instrumentation is required here because functional tests alone cannot prove the algorithm is efficient, only that it arrives.
+
+### FR2 Instrumentation (Cost)
+**Scaffolding Required:**
+- Mock factories for Drone objects with configurable costs.
+- Mock geometry service returning predetermined path lengths.
+
+**Instrumentation:** `PathServiceImpl` logs cost calculations during development.
 
 **Adequacy:** Sufficient for unit testing. Integration testing (covered by FR1) validates cost calculations with real pathfinding.
 
-### FR10 Instrumentation
-
+### FR10 Instrumentation (Schema)
 **Scaffolding Required:**
-- Auto-starting backend: Node.js spawn process launching Maven Spring Boot
-- Health check polling: Fetch loop waiting for backend readiness (60s timeout)
-- Cleanup handlers: Process.on('exit') ensuring backend shutdown
-- BackendClient wrapper providing fetch abstraction
+- **Auto-starting backend:** Node.js spawn process launching Maven Spring Boot.
+- **Health check polling:** Fetch loop waiting for backend readiness.
+- **BackendClient wrapper:** Provides fetch abstraction for TypeScript tests.
 
-**Instrumentation:** BackendClient logs all HTTP requests/responses during testing:
-```typescript
-console.log(`🌐 Calling: ${url}`);
-console.log(`📦 With data:`, JSON.stringify(data));
-console.log(`📥 Response status: ${response.status}`);
-```
+**Instrumentation:** `BackendClient` logs all HTTP requests/responses during testing to debug schema mismatches by inspecting actual API traffic.
 
-This visibility (Ch3) allows debugging schema mismatches by inspecting actual API traffic.
+**Adequacy:** Auto-starting backend is heavyweight (~6-7s startup) but necessary. Mocks would test our assumptions, not the real contract.
 
-**Adequacy Assessment:** Auto-starting backend is heavyweight (~6-7s startup) but necessary. Mocks would test our assumptions, not the real contract. Could be improved with Docker containers for faster startup, but current approach balances automation with simplicity.
-
-### QA1 Instrumentation
-
+### QA1 Instrumentation (Security)
 **Scaffolding Required:**
-- Build process integration: Tests run `npm run build` programmatically
-- File system scanning: Recursive directory traversal of .next/static/
-- Pattern matching: Regex for API key formats and base64 encoding
+- Build process integration: Tests run `npm run build`.
+- File system scanning: Recursive directory traversal.
 
-**Instrumentation:** Static analysis has no runtime instrumentation. Instead, tests instrument the build artifacts themselves, treating compiled JavaScript as the system under test.
-
-**Adequacy:** Cannot detect obfuscated keys or keys split across chunks. Risk accepted since Anthropic keys have consistent format and are unlikely to be intentionally obfuscated.
+**Instrumentation:** Tests instrument the build artifacts themselves, treating compiled JavaScript as the system under test.
 
 ---
 
 ## 3. Process and Lifecycle Integration
 
-**Chosen Lifecycle:** Iterative development with continuous integration (Ch20). Requirements evolved through multiple iterations rather than waterfall specification.
+**Chosen Lifecycle:** Iterative development with continuous integration (Ch20).
 
 ### Early Testing (During Development)
-
-**FR2 Unit Tests:** Execute on every file save via Jest watch mode. TDD workflow:
-1. Write failing test for new cost formula edge case
-2. Implement formula update
-3. Verify all unit tests pass (<1s feedback)
-4. Commit
-
-**Timing:** Unit tests run continuously during coding phase. No dependencies on other components.
+**FR2 (Cost) & FR1 (Pathfinding Logic):** Execute on every file save via IDE.
+- **FR2:** TDD workflow (write failing cost test, fix formula).
+- **FR1:** Structural logic tests (e.g., ensuring A* handles a U-shaped obstacle) run quickly before full integration.
 
 ### Integration Testing (After Component Development)
-
-**FR10 Schema Tests:** Execute after both frontend and backend components exist. Requires:
-- Backend API routes implemented
-- Frontend types defined
-- Maven build working
-
-**Timing:** Integration tests run on pre-commit hooks and in CI pipeline. Slower (~6-7s) than unit tests but catch interface evolution.
+**FR10 Schema Tests:** Execute after both frontend and backend components exist.
+- Requires Backend API routes and Frontend types.
+- Run on pre-commit hooks and CI. Slower (~6-7s).
 
 ### System Testing (Pre-Deployment)
-
-**QA1 Security Tests:** Execute only on production builds. Cannot run during development since Next.js dev mode doesn't generate .next/static/.
-
-**Timing:** System tests run in CI pipeline before deployment. Gate preventing releases with exposed keys.
+**QA1 Security Tests:** Execute only on production builds.
+- Gate preventing releases with exposed keys.
 
 ### Risk Analysis
+**FR1 Risk (Critical):** Infinite loops in pathfinding if the heuristic is non-admissible (overestimates distance).
+- *Mitigation:* Structural testing targets loop boundaries (0, 1, many iterations) per Y&P Ch12 to ensure termination.
 
-**FR2 Risk:** Floating-point precision may cause flakiness. Mitigation: Use tolerance-based assertions (within £0.01) rather than exact equality.
+**FR2 Risk:** Floating-point precision may cause flakiness.
+- *Mitigation:* Use tolerance-based assertions (within £0.01).
 
-**FR10 Risk:** Backend startup failure causes all tests to fail. Mitigation: Health check with clear error messages distinguishing "backend didn't start" from "schema mismatch".
+**FR10 Risk:** Backend startup failure causes all tests to fail (false negatives).
+- *Mitigation:* 90s timeout and distinct error messaging.
 
-**QA1 Risk:** Pattern matching may miss novel obfuscation techniques. Mitigation: Manual code review as redundant check. Accept risk since intentional key exposure is unlikely.
+### Coverage Targets and Measurement Strategy
 
-**Process Risk:** Auto-starting backend requires Maven on test machine. Mitigation: CI pipeline documents this dependency explicitly.
+**Coverage Tools:** JaCoCo (Java), Istanbul (TypeScript).
+
+**Target Metrics:**
+
+| Component | Target | Rationale |
+|-----------|--------|-----------|
+| **FR1 (Pathfinding)** | **≥90% Instruction Coverage** | **Core Algorithm.** Logic errors here (e.g., wrong heuristic) are subtle. High structural coverage is required to ensure correctness. |
+| FR2 (Cost calculation) | ≥70% Instruction Coverage | Standard business logic. |
+| FR10 (Schema) | 100% Endpoint Coverage | Must verify all 3 endpoints (calculate, query, details). |
+| QA1 (Security) | 100% Artifact Coverage | Must scan all production bundles. |
+
+**Justification for Variation:** FR1 is complex algorithmic code requiring high white-box coverage (90%). FR2 is linear arithmetic, so 70% is sufficient. FR10 is interface testing, so "Lines of Code" is less relevant than "Endpoints Hit".
 
 ---
 
 ## 4. Omissions and Future Work
 
-**Not Tested:** FR4 (conversational parsing) requires real Claude API calls with non-deterministic responses. No scaffolding can simulate LLM behavior. Deferred to manual testing due to cost and non-determinism.
+**Not Tested: FR4 (Conversational Parsing):** Requires real Claude API calls. Non-deterministic and expensive. Deferred to manual testing.
 
-**Improvement Opportunity:** FR10 could use contract testing (e.g., Pact) to generate schemas from backend, eliminating manual type synchronization. Current approach accepts manual maintenance overhead.
+**Validation vs Verification:** All tests currently verify implementation correctness (Verification). User validation (Validation) of the conversational interface requires real user trials.
 
-**Validation vs Verification:** All tests verify implementation correctness. User validation (does conversational interface meet needs?) requires usability testing with hospital staff, which is out of scope.
+**Conscious Trade-offs:**
+- **Mocking FR2** (Speed) vs **Real FR10** (Accuracy).
+- **Static Security Scan** (Fast) vs **Runtime Penetration Testing** (Comprehensive).

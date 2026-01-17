@@ -26,19 +26,42 @@ Requirements are selected to demonstrate diversity across:
 ---
 
 ## Requirements Overview
+| ID | Requirement | Type | Level | Priority | **Testing Status** |
+|----|-------------|------|-------|----------|-------------------|
+| FR1 | Pathfinding completeness | Functional | Integration | Critical | **Selected** |
+| FR2 | Cost calculation accuracy | Functional | Unit | High | **Selected** |
+| FR3 | Hover validation | Functional | Integration | Medium | **Selected** |
+| FR4 | Conversational parsing | Functional | System | Medium | Deferred |
+| FR5 | Multi-drone coordination | Functional | Integration | Medium | **Selected** |
+| FR8 | No-fly zone avoidance | Functional | Integration | Low | Deferred |
+| FR9 | Time window calculation | Functional | Unit | Medium | Deferred |
+| FR10 | Response schema compatibility | Functional | Integration | Medium | **Selected** |
+| QA1 | API key security | Security | System | Critical | **Selected** |
+| QA2 | Animation performance | Performance | System | Low | Deferred |
+| QA3 | API retry reliability | Reliability | Integration | Medium | Deferred |
+| QA4 | Location parser robustness | Robustness | Unit | Medium | **Selected** |
+| QA5 | Cost parser robustness | Robustness | Unit | Medium | **Selected** |
+| SR1 | Geometry calculations | Supporting | Unit | Medium | **Selected** |
+| SR2 | REST API compliance | Supporting | Unit | Medium | **Selected** |
 
-| ID | Requirement | Type | Level | Priority |
-|----|-------------|------|-------|----------|
-| FR1 | Pathfinding completeness | Functional | Integration | Critical |
-| FR2 | Cost calculation accuracy | Functional | Unit | High |
-| FR3 | Hover validation | Functional | Integration | Medium |
-| FR5 | Multi-drone coordination | Functional | Integration | Medium |
-| FR10 | Response schema compatibility | Functional | Integration | Medium |
-| QA1 | API key security | Security | System | Critical |
-| QA4 | Location parser robustness | Robustness | Unit | Medium |
-| QA5 | Cost parser robustness | Robustness | Unit | Medium |
-| SR1 | Geometry calculations | Supporting | Unit | Medium |
-| SR2 | REST API compliance | Supporting | Unit | Medium |
+---
+
+## Selection Rationale: Why i chose these 10 Requirements?
+
+**Risk-Based Prioritization:** From 18 identified requirements, 10 were selected for testing based on risk assessment combining **severity** (impact of failure) and **feasibility** (can we test this effectively?).
+
+**Selected for Testing (10):**
+- **Critical risk, high feasibility:** FR1 (patient safety), QA1 (financial/security)
+- **High risk, high feasibility:** FR2 (financial accuracy), FR10 (runtime crashes)
+- **Medium risk, demonstrates diversity:** FR3, FR5 (integration level), QA4, QA5 (robustness), SR1, SR2 (supporting)
+
+**Deferred (8):**
+- **High cost/infeasibility:** FR4 (requires $$ Claude API calls, non-deterministic)
+- **Low priority given time constraints:** FR8 (complex geometry), FR9 (not implemented), QA2 (instrumentation overhead), QA3 (network fault injection)
+
+**Diversity Goal:** Selected requirements span all test types (unit/integration/system), all requirement types (functional/security/robustness), ensuring portfolio demonstrates breadth per LO1 criteria.
+
+**Time Budget:** 10 requirements chosen due to 50 hour coursework constraint
 
 
 ---
@@ -178,24 +201,33 @@ These support the functional requirements above and are tested via:
 
 ## Test Approach Summary
 
-### Unit Tests (49 tests)
+### Unit Tests
 - **Technique:** Isolated function testing with mocks
 - **Tools:** JUnit + Mockito (backend), Jest (frontend)
 - **Coverage:** Cost calculation, geometry, parsers
+- **Ch3 Principles Applied:**
+  - **Partition:** Isolated components test independently (FR2, QA4, QA5)
+  - **Visibility:** Fast feedback (<1s) enables immediate error detection
 - **Strengths:** Fast (<1s), deterministic, easy to debug
 - **Limitations:** Don't test integration between components
 
-### Integration Tests (20 tests)
+### Integration Tests
 - **Technique:** Multi-component testing with real dependencies
 - **Tools:** @SpringBootTest (backend), auto-starting backend (frontend)
 - **Coverage:** Pathfinding, hover validation, schema compatibility
+- **Ch3 Principles Applied:**
+  - **Redundancy:** FR10 tests real HTTP contract (not mock assumptions)
+  - **Sensitivity:** FR1 fails consistently if pathfinding broken
 - **Strengths:** Tests real component interactions
 - **Limitations:** Slower (~6-7s), requires backend running
 
-### System Tests (17 tests)
+### System Tests
 - **Technique:** End-to-end production artifact testing
 - **Tools:** Static analysis, file scanning
 - **Coverage:** Security (API key exposure)
+- **Ch3 Principles Applied:**
+  - **Redundancy:** QA1 combines development practices (env vars) + automated detection
+  - **Restriction:** Tests production builds only (simpler scope than runtime)
 - **Strengths:** Tests actual deployment artifacts
 - **Limitations:** Cannot test runtime behavior
 
