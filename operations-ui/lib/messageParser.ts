@@ -12,6 +12,48 @@ export interface ParsedDeliveryInfo {
     cost: number;
     drone: string;
   }
+
+  // Known hospital locations in Edinburgh area
+  const KNOWN_HOSPITALS = [
+    { name: 'Western General Hospital', lng: -3.2351, lat: 55.9623 },
+    { name: 'Royal Infirmary of Edinburgh', lng: -3.1365, lat: 55.9215 },
+    { name: "St John's Hospital", lng: -3.5103, lat: 55.9297 },
+    { name: 'Royal Edinburgh Hospital', lng: -3.2087, lat: 55.9235 },
+    { name: 'Sick Kids Hospital', lng: -3.1839, lat: 55.9389 },
+  ] as const;
+
+  const COORDINATE_TOLERANCE_DEGREES = 0.002; // ~220 meters
+
+  /**
+   * Maps coordinates to known hospital names
+   * Used to display friendly names in the UI
+   */
+  export function extractLocation(text: string): string {
+    // Updated regex to handle whitespace before and after coordinates
+    const coordPattern = /(-?\d+\.\d+)\s*,\s*(-?\d+\.\d+)/;
+    const match = text.match(coordPattern);
+    
+    if (!match) return 'Unknown Location';
+    
+    const lng = parseFloat(match[1]);
+    const lat = parseFloat(match[2]);
+    
+    if (isNaN(lng) || isNaN(lat)) return 'Unknown Location';
+    if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return 'Unknown Location';
+    
+    // Find closest hospital within tolerance
+    for (const hospital of KNOWN_HOSPITALS) {
+      const distance = Math.sqrt(
+        Math.pow(lng - hospital.lng, 2) + Math.pow(lat - hospital.lat, 2)
+      );
+      
+      if (distance <= COORDINATE_TOLERANCE_DEGREES) {
+        return hospital.name;
+      }
+    }
+    
+    return 'Unknown Location';
+  }
   
   export function parseDeliveryRequest(content: string): ParsedDeliveryInfo | null {
     const lowerContent = content.toLowerCase();

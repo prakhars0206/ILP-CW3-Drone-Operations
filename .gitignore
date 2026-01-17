@@ -25,3 +25,4 @@ backend/mvnw.cmd
 
 # OS files
 .DS_Store
+*.zip

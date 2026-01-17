@@ -12,6 +12,7 @@ interface Delivery {
   heating?: boolean;
   status: 'pending' | 'assigned' | 'in-flight' | 'completed';
   assignedDrone?: string;
+  cost?: number;
 }
 
 interface DroneStats {

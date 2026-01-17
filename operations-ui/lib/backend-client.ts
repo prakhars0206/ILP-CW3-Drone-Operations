@@ -81,16 +81,22 @@ export class BackendClient {
 
   async getDroneDetails(droneId: string): Promise<any> {
     const url = `${this.baseUrl}/api/v1/droneDetails/${droneId}`;
-    console.log('🌐 Calling:', url);
+    console.log(`🌐 Calling: ${url}`);
     
     try {
       const response = await fetch(url);
       console.log('📥 Response status:', response.status);
-
+  
+      // Handle 404 as "not found"  - return null (not an error)
+      if (response.status === 404) {
+        console.log('ℹ️  Drone not found (404) - returning null');
+        return null;
+      }
+  
       if (!response.ok) {
         throw new Error(`Backend error: ${response.status}`);
       }
-
+  
       const result = await response.json();
       console.log('✅ Drone details:', result);
       return result;
