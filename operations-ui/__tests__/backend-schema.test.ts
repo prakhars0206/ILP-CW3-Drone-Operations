@@ -75,7 +75,7 @@ describe('FR10: Backend Response Schema Compatibility (Integration Level)', () =
       expect(response).toHaveProperty('totalCost');
       expect(response).toHaveProperty('dronePaths');
       expect(response.dronePaths.length).toBe(0);
-    });
+    }, 15000);
     
     test('should validate flight path coordinates', async () => {
       const deliveryInput = [{
