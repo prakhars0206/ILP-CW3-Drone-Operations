@@ -1,16 +1,13 @@
 # Test Planning Document
-**Project:** ILP CW3 - Drone Operations Dashboard  
-**Student:** Prakhar Sangal (s2479386)  
-**Date:** January 2026
 
 ---
 
 ## 1. Priority and Prerequisites
 
-This section identifies testing priorities and prerequisites for **four** requirements. Per Y&P Ch3, we decompose these requirements to identify testable inputs, outputs, and invariants.
+This section identifies testing priorities and prerequisites for **four** requirements i've chosen to go into detail. As Per Y&P Ch3, we basically decompose these requirements to identify testable inputs, outputs, and invariants.
 
 ### FR1: Pathfinding Completeness (Integration Level, Critical Priority)
-**Why Critical Priority:** This is the core function. Failure here renders the drone useless and risks safety (e.g., hitting No-Fly Zones). We allocate the highest resource testing here.
+**Why Critical Priority:** This is the core function. Failure here renders the drones useless and risks safety (e.g., hitting No-Fly Zones). We allocate the highest resource testing here.
 
 **Specification Decomposition:**
 To apply the **Partition Principle** (Y&P Ch3), we decompose the pathfinder:

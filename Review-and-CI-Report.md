@@ -1,11 +1,9 @@
 # Review and CI/CD Report
-**Project:** ILP CW3 - Drone Operations Dashboard
-**Student:** Prakhar Sangal (s2479386)
 
 ## 1. Code Review Strategy (LO 5.1)
 
 ### Review Checklist
-I designed a specific checklist for Pull Request (PR) reviews, targeting the specific risks identified in the Test Plan (Cost Accuracy & API Security).
+I designed a specific checklist for Self-Review prior to committing code, targeting the specific risks identified in the Test Plan (Cost Accuracy & API Security).
 
 **General Criteria:**
 - [ ] **Readability:** Variables use domain terms (e.g., `costPerMove`, not `cpm`).
@@ -17,22 +15,24 @@ I designed a specific checklist for Pull Request (PR) reviews, targeting the spe
 - [ ] **API Contracts:** Any change to a Java DTO must have a corresponding change in the TypeScript Interface.
 - [ ] **Defensive Coding:** Parsers must handle `null` or malformed inputs without crashing the thread.
 
-### Sample Review Outcome
-**Artifact:** Pull Request #12 "Fix Cost Precision"
-**Issue Identified:** Original code used `double` for accumulation.
-**Review Comment:** *"This implementation accumulates rounding errors on long paths. Please switch to BigDecimal or enforce rounding at the service boundary."*
-**Resolution:** Developer (Self) refactored to use `Math.round()` on final output.
+### Sample Self-Review Outcome
+**Artifact:** `feature/cost-precision` branch.
+**Issue Identified:** Original implementation used `double` accumulation for path costs.
+**Finding:** *"This implementation accumulates rounding errors on long paths (e.g., £10.00000004). Must switch to BigDecimal or enforce rounding at the service boundary."*
+**Resolution:** Refactored to use `Math.round()` on final output before DTO mapping.
+
+---
 
 ## 2. CI Pipeline Design (LO 5.2 & 5.3)
 
-The pipeline is implemented using **GitHub Actions**. It is triggered on `push` to `main` and all `pull_request` events.
+The pipeline is implemented using **GitHub Actions** (see `.github/workflows/ci.yml`). It is triggered on `push` to `main` and all `pull_request` events.
 
 ### Pipeline Stages
 1.  **Build & Unit Test (Parallel):**
     *   **Backend:** Runs `mvn test` (JUnit).
-    *   **Frontend:** Runs `npm test` (Jest).
+    *   **Frontend:** Runs `npm test` (Jest) for isolated logic.
 2.  **Integration Test (Blocking):**
-    *   Launches Spring Boot Backend.
+    *   Launches Spring Boot Backend in the CI runner.
     *   Waits for Health Check (`/api/v1/health`).
     *   Executes `backend-schema.test.ts` against the live local server.
 3.  **Security Gate (Blocking):**
@@ -41,20 +41,26 @@ The pipeline is implemented using **GitHub Actions**. It is triggered on `push` 
 4.  **Report Generation:**
     *   Uploads Coverage Reports (JaCoCo + Istanbul) as artifacts.
 
+---
+
 ## 3. Pipeline Demonstration (LO 5.4)
 
 ### Scenario A: The "Happy Path"
-**Input:** Commit `7f3a2b` (Clean build).
-**Result:** All jobs pass.
-**Evidence:**
--   `Backend Unit Tests`: 2.1s, 22 passed.
--   `Frontend Schema Tests`: 18s, 21 passed.
--   **Status:** Green Checkmark.
+**Input:** `main` branch (Clean build).
+**Result:** All jobs pass. The Integration Tests successfully spawned the backend and verified the API contract.
+
+![CI Pipeline Success](assets/Github_actions.png)
+*Figure 1: Successful execution of parallel unit tests and the blocking integration stage.*
 
 ### Scenario B: The "Broken Contract" (Interface Fault)
-**Input:** Changed Java DTO field `cost` to `totalCost` without updating TypeScript.
+**Input:** Branch `feature/break-contract`.
+**Modification:** Used `@JsonProperty("cost")` in the Java DTO to rename the JSON output field, but deliberately did not update the Frontend TypeScript interface (which expects `totalCost`).
+
 **Pipeline Behavior:**
-1.  **Unit Tests:** PASS (Java tests passed, TS unit tests passed).
-2.  **Integration Step:** FAIL. `backend-schema.test.ts` failed: `Property 'cost' missing in response`.
-3.  **Outcome:** PR blocked. Deployment prevented.
-**Analysis:** This demonstrates the pipeline correctly identifies cross-component integration faults that unit tests miss.
+1.  **`test-backend` (Unit Tests):** **PASS**. (Internal Java logic is valid and compiles).
+2.  **`test-frontend-integration`:** **FAIL**. (The harness detected the schema mismatch).
+
+![CI Pipeline Failure](assets/github_actions_fail.png)
+*Figure 2: The pipeline correctly catching an Interface Fault. Note that the Backend Unit Tests  passed, proving that Unit Testing alone is insufficient for catching integration errors.*
+
+**Analysis:** This demonstrates that the CI pipeline functions as an automated regression guard (Y&P Ch22), trapping integration defects that would otherwise crash the production UI.

@@ -12,6 +12,48 @@ A conversational interface for ILP drone delivery planning using Anthropic's Mod
 
 ---
 
+## 🎓 Software Testing Coursework (Audit Guide)
+
+**Auditor Note:** This section provides quick access to evidence required for the Software Testing Portfolio.
+
+### 📄 Key Documents
+| Document | Linked LO | Content |
+|----------|-----------|---------|
+| `REQUIREMENTS.md` | **LO1** | Risk-based requirement selection & specification decomposition. |
+| `Test-Plan.md` | **LO2** | Testing strategy, scaffolding design (Graph Mocks), and risk analysis. |
+| `Testing-Evidence.md` | **LO3** | Execution summary, bug reports (Yield), and coverage metrics. |
+| `Evaluation-Report.md` | **LO4** | Statistical mutation analysis and gap analysis (AI Determinism). |
+| `Review-and-CI-Report.md` | **LO5** | Code review checklists and CI pipeline demonstration. |
+
+### Running Tests Locally
+The testing suite employs a **hybrid approach** (Java JUnit + TypeScript Jest + Auto-starting Integration).
+
+**1. Backend Unit Tests (FR2, SR1):**
+```bash
+cd backend
+./mvnw test
+# Generates coverage report at: backend/target/site/jacoco/index.html
+```
+
+**2. Frontend & Integration Tests (FR10, QA1):**
+Includes the custom backend-launcher harness and security scans.
+
+```bash
+cd operations-ui
+npm test
+# Note: This spawns the Spring Boot server automatically on port 8080.
+```
+
+### 🚀 CI/CD Pipeline
+The GitHub Actions pipeline (`.github/workflows/ci.yml`) enforces the quality gate on every push.
+*   **Verification:** Navigate to the **Actions** tab on GitHub.
+*   **Stages:**
+    1.  **Parallel Build:** Compiles Java/TS independently.
+    2.  **Integration Gate:** Launches the backend and verifies API schema compatibility.
+    3.  **Security Audit:** Scans build artifacts for API key leaks.
+
+---
+
 ## Architecture
 ```
 User → Next.js Dashboard → MCP Server → Claude API → ILP REST API (CW2 Backend)

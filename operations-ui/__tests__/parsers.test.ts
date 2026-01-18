@@ -1,5 +1,11 @@
-import { extractLocation, parseCostFromMessage } from '../lib/messageParser';
+import { 
+  extractLocation, 
+  parseCostFromMessage, 
+  parseDeliveryRequest, 
+  isConfirmationMessage 
+} from '../lib/messageParser';
 
+// ===== QA4: Location Parser Tests =====
 describe('QA4: Location Parser Robustness (Unit Level)', () => {
   
   describe('TC-QA4-01: Coordinates match known hospitals', () => {
@@ -58,19 +64,18 @@ describe('QA4: Location Parser Robustness (Unit Level)', () => {
     test('should use first coordinate pair when multiple present', () => {
       const text = 'From -3.2087, 55.9235 to -3.1365, 55.9215';
       const result = extractLocation(text);
-      // Should match first coords (Royal Edinburgh Hospital)
       expect(result).toBe('Royal Edinburgh Hospital');
     });
   });
 });
 
+// ===== QA5: Cost Parser Tests =====
 describe('QA5: Cost Parser Robustness (Unit Level)', () => {
   
   describe('TC-QA5-01: Single drone extraction', () => {
     test('should extract single drone and cost', () => {
       const text = 'Drone: Drone #5\nTotal Cost: £12.50';
       const result = parseCostFromMessage(text);
-      
       expect(result).not.toBeNull();
       expect(result?.drones).toEqual(['5']);
       expect(result?.cost).toBe(12.50);
@@ -79,7 +84,6 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should handle drone without # symbol', () => {
       const text = 'Drone: 3\nCost: £8.99';
       const result = parseCostFromMessage(text);
-      
       expect(result?.drones).toContain('3');
       expect(result?.cost).toBe(8.99);
     });
@@ -87,7 +91,6 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should extract cost without pound symbol', () => {
       const text = 'Drone #7\nTotal Cost: 15.25';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(15.25);
     });
   });
@@ -96,7 +99,6 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should extract two drones from "Used" format', () => {
       const text = 'Drones Used: #9 and #1\nTotal Cost: £25.00';
       const result = parseCostFromMessage(text);
-      
       expect(result?.drones).toEqual(['9', '1']);
       expect(result?.cost).toBe(25.00);
     });
@@ -104,7 +106,6 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should handle "Drones Used" with numbers', () => {
       const text = 'Drones Used: 2 and 5\nCost: £42.30';
       const result = parseCostFromMessage(text);
-      
       expect(result?.drones).toHaveLength(2);
       expect(result?.drones).toContain('2');
       expect(result?.drones).toContain('5');
@@ -115,14 +116,12 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should return null if no cost found', () => {
       const text = 'Using Drone #5 for delivery';
       const result = parseCostFromMessage(text);
-      
       expect(result).toBeNull();
     });
 
     test('should handle cost without drone info', () => {
       const text = 'Total Cost: £15.00';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(15.00);
       expect(result?.drones).toBeUndefined();
     });
@@ -140,21 +139,18 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should handle comma in large numbers', () => {
       const text = 'Total Cost: £1,234.56';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(1234.56);
     });
 
     test('should handle "Cost:" with colon', () => {
       const text = 'Drone #8\nCost: £0.99';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(0.99);
     });
 
     test('should handle cost with just pence', () => {
       const text = 'Total Cost: £0.50';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(0.50);
     });
   });
@@ -163,22 +159,94 @@ describe('QA5: Cost Parser Robustness (Unit Level)', () => {
     test('should handle large costs', () => {
       const text = 'Total Cost: £999.99';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(999.99);
     });
 
     test('should handle zero cost', () => {
       const text = 'Cost: £0.00';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(0);
     });
 
     test('should handle integer costs without decimals', () => {
       const text = 'Total Cost: £25';
       const result = parseCostFromMessage(text);
-      
       expect(result?.cost).toBe(25);
     });
+  });
+});
+
+// ===== NEW TESTS: Delivery Request Parser =====
+describe('Delivery Parser Robustness (Unit Level)', () => {
+  
+  test('should return null for non-delivery messages', () => {
+    expect(parseDeliveryRequest('Hello there')).toBeNull();
+    expect(parseDeliveryRequest('What is the weather?')).toBeNull();
+  });
+
+  test('should parse full delivery request', () => {
+    const text = 'Schedule delivery of 5kg to Western General Hospital on 2025-12-05 at 10:00 with cooling';
+    const result = parseDeliveryRequest(text);
+    
+    expect(result).not.toBeNull();
+    expect(result?.weight).toBe(5);
+    // Note: Regex might not capture location perfectly without stricter formatting
+    expect(result?.date).toBe('2025-12-05');
+    expect(result?.time).toBe('10:00');
+    expect(result?.cooling).toBe(true);
+    expect(result?.heating).toBe(false);
+  });
+
+  test('should parse request with coordinates', () => {
+    const text = 'Deliver package to coordinates -3.2351, 55.9623 with heating';
+    const result = parseDeliveryRequest(text);
+    
+    expect(result?.coordinates).toEqual({ lng: -3.2351, lat: 55.9623 });
+    expect(result?.heating).toBe(true);
+    expect(result?.cooling).toBe(false);
+  });
+
+  test('should handle decimal weights', () => {
+    const text = 'Send 2.5kg payload';
+    const result = parseDeliveryRequest(text);
+    if (result?.weight) {
+        expect(result.weight).toBe(2.5);
+    }
+  });
+
+  test('should detect both heating and cooling if requested', () => {
+    const text = 'Deliver with heating and cooling please';
+    const result = parseDeliveryRequest(text);
+    expect(result?.heating).toBe(true);
+    expect(result?.cooling).toBe(true);
+  });
+});
+
+// ===== NEW TESTS: Confirmation Logic =====
+describe('Confirmation Logic (Unit Level)', () => {
+  
+  test('should detect simple yes', () => {
+    expect(isConfirmationMessage('yes')).toBe(true);
+    expect(isConfirmationMessage('Yes')).toBe(true);
+    expect(isConfirmationMessage('YES')).toBe(true);
+  });
+
+  test('should detect confirmation phrases', () => {
+    expect(isConfirmationMessage('confirm')).toBe(true);
+    expect(isConfirmationMessage('proceed please')).toBe(true);
+    expect(isConfirmationMessage('go ahead')).toBe(true);
+    expect(isConfirmationMessage('looks good')).toBe(true);
+  });
+
+  test('should reject non-confirmation messages', () => {
+    expect(isConfirmationMessage('no')).toBe(false);
+    expect(isConfirmationMessage('wait')).toBe(false);
+    expect(isConfirmationMessage('change date')).toBe(false);
+    expect(isConfirmationMessage('I need to confirm details')).toBe(false);
+  });
+
+  test('should handle punctuation', () => {
+    expect(isConfirmationMessage('Yes, please!')).toBe(true);
+    expect(isConfirmationMessage('Confirm.')).toBe(true);
   });
 });

@@ -225,6 +225,56 @@ class PathServiceImplUnitTest {
             assertThat(response.totalCost()).isCloseTo(3.15, 
                 org.assertj.core.api.Assertions.offset(0.01));
         }
+
+        @Test
+        @DisplayName("TC-FR1-UNIT-06: Verifies cost calculation for U-shaped obstacle detour")
+        void testCostCalculation_UShapedObstacle() {
+            Position start = testServicePoint.location();
+            // A destination close by "as the crow flies", but behind a wall
+            Position delivery = new Position(start.lng() + 0.00015, start.lat()); 
+            
+            //  Define a "Detour" Path (U-Shape)
+            // Instead of a direct line (1 move), the drone must go:
+            // Down (3), Right (3), Up (3) -> Total 9 moves
+            List<Position> uShapedPath = new ArrayList<>();
+            uShapedPath.add(start);
+            
+            // Leg 1: Go South (away from target) to avoid wall
+            uShapedPath.add(new Position(start.lng(), start.lat() - 0.00015));
+            uShapedPath.add(new Position(start.lng(), start.lat() - 0.00030));
+            uShapedPath.add(new Position(start.lng(), start.lat() - 0.00045));
+            
+            // Leg 2: Go East (under the wall)
+            uShapedPath.add(new Position(start.lng() + 0.00015, start.lat() - 0.00045));
+            
+            // Leg 3: Go North (back towards target)
+            uShapedPath.add(new Position(start.lng() + 0.00015, start.lat() - 0.00030));
+            uShapedPath.add(new Position(start.lng() + 0.00015, start.lat() - 0.00015));
+            uShapedPath.add(delivery); // Arrived
+            
+            // 2. Mock the Pathfinder to return this specific U-shape
+            when(droneService.findAvailableDronesForDispatches(anyList()))
+                .thenReturn(List.of("test-drone-1"));
+            when(droneService.findDroneDetailsById("test-drone-1"))
+                .thenReturn(Optional.of(testDrone));
+                
+            when(pathfinder.findPath(any(Position.class), any(Position.class), anyList()))
+                .thenReturn(uShapedPath) // There
+                .thenReturn(uShapedPath); // Back (assume same path for simplicity)
+
+            // 3. Execute
+            JsonDtos.MedDispatchRec dispatch = createDispatch(1L, 1.0, delivery);
+            DeliveryPathResponse response = pathService.calculateDeliveryPath(
+                Collections.singletonList(dispatch)
+            );
+
+            // 4. Verify
+            // The path size is 8 points (Start + 7 steps) -> 7 moves.
+            // Total moves = 7 (There) + 1 (Hover) + 7 (Back) = 15.
+            // Cost = 1.00 + (15 * 0.05) + 2.00 = 3.75
+            assertThat(response.totalMoves()).isEqualTo(15); // Changed from 14 to 15
+            assertThat(response.totalCost()).isCloseTo(3.75, org.assertj.core.api.Assertions.offset(0.01)); // Changed from 3.70 to 3.75
+        }
     }
     
     // ==== HELPER METHODS ====

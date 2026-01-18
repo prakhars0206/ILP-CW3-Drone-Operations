@@ -1,7 +1,4 @@
 # Testing Requirements
-**Course:** Software Testing 2025/6  
-**Project:** ILP CW3 - Drone Operations Dashboard  
-**Student:** Prakhar Sangal (s2479386)
 
 ---
 
@@ -26,29 +23,31 @@ Requirements are selected to demonstrate diversity across:
 ---
 
 ## Requirements Overview
-| ID | Requirement | Type | Level | Priority | **Testing Status** |
-|----|-------------|------|-------|----------|-------------------|
-| FR1 | Pathfinding completeness | Functional | Integration | Critical | **Selected** |
-| FR2 | Cost calculation accuracy | Functional | Unit | High | **Selected** |
-| FR3 | Hover validation | Functional | Integration | Medium | **Selected** |
-| FR4 | Conversational parsing | Functional | System | Medium | Deferred |
-| FR5 | Multi-drone coordination | Functional | Integration | Medium | **Selected** |
-| FR8 | No-fly zone avoidance | Functional | Integration | Low | Deferred |
-| FR9 | Time window calculation | Functional | Unit | Medium | Deferred |
-| FR10 | Response schema compatibility | Functional | Integration | Medium | **Selected** |
-| QA1 | API key security | Security | System | Critical | **Selected** |
-| QA2 | Animation performance | Performance | System | Low | Deferred |
-| QA3 | API retry reliability | Reliability | Integration | Medium | Deferred |
-| QA4 | Location parser robustness | Robustness | Unit | Medium | **Selected** |
-| QA5 | Cost parser robustness | Robustness | Unit | Medium | **Selected** |
-| SR1 | Geometry calculations | Supporting | Unit | Medium | **Selected** |
-| SR2 | REST API compliance | Supporting | Unit | Medium | **Selected** |
+| ID | Requirement | Description | Type | Level | Priority | **Testing Status** |
+|----|-------------|-------------|------|-------|----------|-------------------|
+| FR1 | Pathfinding completeness | Calculate valid, optimal flight paths for all orders using A*. | Functional | Integration | Critical | **Selected** |
+| FR2 | Cost calculation accuracy | Calculate delivery costs with £0.01 precision using defined formula. | Functional | Unit | High | **Selected** |
+| FR3 | Hover validation | Drone flight path must include a hover step within 150m of target. | Functional | Integration | Medium | **Selected** |
+| FR4 | Conversational parsing | Parse natural language user commands into structured JSON intent. | Functional | System | Medium | Deferred* |
+| FR5 | Multi-drone coordination | Coordinate multiple drones to handle high-capacity delivery batches. | Functional | Integration | Medium | **Selected** |
+| FR8 | No-fly zone avoidance | Flight paths must never intersect with defined restricted zones. | Functional | Integration | Low | Deferred |
+| FR9 | Time window calculation | Calculate flight duration to ensure delivery occurs within time slots. | Functional | Unit | Medium | Deferred |
+| FR10 | Response schema compatibility | Backend JSON responses must strictly match Frontend TypeScript interfaces. | Functional | Integration | Medium | **Selected** |
+| QA1 | API key security | Prevent exposure of Anthropic/ILP API keys in client-side bundles. | Security | System | Critical | **Selected** |
+| QA2 | Animation performance | Map animations must maintain smooth framerate (60fps) under load. | Performance | System | Low | Deferred |
+| QA3 | API retry reliability | System must retry failed API calls with exponential backoff. | Reliability | Integration | Medium | Deferred |
+| QA4 | Location parser robustness | Accurately extract coordinates from text with spatial tolerance. | Robustness | Unit | Medium | **Selected** |
+| QA5 | Cost parser robustness | Extract price and drone IDs correctly from AI textual responses. | Robustness | Unit | Medium | **Selected** |
+| SR1 | Geometry calculations | Provide accurate Haversine distance and next-position calculations. | Supporting | Unit | Medium | **Selected** |
+| SR2 | REST API compliance | API endpoints must return standard HTTP status codes (200, 404, 500). | Supporting | Unit | Medium | **Selected** |
+
+*\*FR4 end-to-end testing with Claude is deferred; internal parser logic is covered under QA4/QA5.*
 
 ---
 
 ## Selection Rationale: Why i chose these 10 Requirements?
 
-**Risk-Based Prioritization:** From 18 identified requirements, 10 were selected for testing based on risk assessment combining **severity** (impact of failure) and **feasibility** (can we test this effectively?).
+**Risk-Based Prioritization:** From 18 identified requirements, 10 were selected for testing based on risk assessment combining **severty** (impact of failure) and the **feasibility** (can we test this effectively?) .
 
 **Selected for Testing (10):**
 - **Critical risk, high feasibility:** FR1 (patient safety), QA1 (financial/security)
@@ -56,12 +55,12 @@ Requirements are selected to demonstrate diversity across:
 - **Medium risk, demonstrates diversity:** FR3, FR5 (integration level), QA4, QA5 (robustness), SR1, SR2 (supporting)
 
 **Deferred (8):**
-- **High cost/infeasibility:** FR4 (requires $$ Claude API calls, non-deterministic)
+- **High cost/infeasibility:** FR4 (requires real Claude API calls which costs money to do effectively, non-deterministic)
 - **Low priority given time constraints:** FR8 (complex geometry), FR9 (not implemented), QA2 (instrumentation overhead), QA3 (network fault injection)
 
-**Diversity Goal:** Selected requirements span all test types (unit/integration/system), all requirement types (functional/security/robustness), ensuring portfolio demonstrates breadth per LO1 criteria.
+**Diversity Goal:** Selected requirements span all test types (unit/integration/system), all requirement types (functional/security/robustness), ensuring portfolio demonstrates breadth as per the LO1 criteria.
 
-**Time Budget:** 10 requirements chosen due to 50 hour coursework constraint
+**Time Budget:** 10 requirements chosen due to the50 hour coursework constraint
 
 
 ---
@@ -72,7 +71,7 @@ Requirements are selected to demonstrate diversity across:
 
 **Description:** System must generate complete flight paths for all requested deliveries.
 
-**Why Critical:** Incomplete paths = undelivered medication = patient safety risk
+**Why Critical:** Incomplete paths means undelivered medication = patient safety risk
 
 **Test Approach:**
 - Integration tests calling real backend pathfinding service
@@ -84,7 +83,7 @@ Requirements are selected to demonstrate diversity across:
 - Assumes backend A* algorithm is correct (tested separately)
 - Performance testing limited to localhost (not production load)
 
-**Tests:** PathServiceImplTest.java (6 integration tests)
+**Tests:** PathServiceImplTest.java (integration tests)
 
 ---
 
@@ -104,7 +103,21 @@ Requirements are selected to demonstrate diversity across:
 - Floating-point precision may cause rounding (tested to £0.01 tolerance)
 - Does not test currency conversion or tax calculations
 
-**Tests:** PathServiceImplUnitTest.java (10 unit tests)
+**Tests:** PathServiceImplUnitTest.java ( unit tests)
+
+---
+
+### FR3 & FR5: Advanced Flight Logic (Integration, Medium)
+
+**FR3 - Hover Validation:**
+- **Description:** Flight paths must include a hover step within 150m of the target.
+- **Test Approach:** Integration test verifying the geometric distance between the last flight point and the delivery target.
+
+**FR5 - Multi-drone Coordination:**
+- **Description:** Requests exceeding single drone capacity (e.g., >5kg) must be split across multiple drones.
+- **Test Approach:** Integration test submitting a heavy payload and asserting that `dronePaths` list size > 1.
+
+**Tests:** PathServiceImplTest.java (Covered in existing integration suite).
 
 ---
 
@@ -124,7 +137,7 @@ Requirements are selected to demonstrate diversity across:
 - Requires backend to be buildable (Maven dependency)
 - Slower than unit tests (~6-7 seconds)
 
-**Tests:** backend-schema.test.ts (8 integration tests with real backend)
+**Tests:** backend-schema.test.ts (integration tests using the real backend)
 
 ---
 
@@ -145,7 +158,7 @@ Requirements are selected to demonstrate diversity across:
 - Assumes key format remains `sk-ant-api03-...`
 - Does not test network request inspection
 
-**Tests:** security.test.ts (17 system tests)
+**Tests:** security.test.ts ( system tests)
 
 ---
 
@@ -170,7 +183,7 @@ Requirements are selected to demonstrate diversity across:
 - Regex patterns may not cover future phrasing changes
 - Assumes response formats remain consistent
 
-**Tests:** parsers.test.ts (26 unit tests)
+**Tests:** parsers.test.ts (comprehensive unit tests)
 
 ---
 
@@ -236,7 +249,7 @@ These support the functional requirements above and are tested via:
 ## Limitations & Trade-offs
 
 ### Cannot Test Without Real Infrastructure:
-- **Claude API behavior** - Costs $$ per test, non-deterministic LLM
+- **Claude API behavior** - Costs actual money per test, non-deterministic LLM
 - **Production load** - No access to real hospital traffic data
 - **Real drones** - Hardware constraints not modeled
 
@@ -248,4 +261,3 @@ These support the functional requirements above and are tested via:
 ### Risk Acceptance:
 - Some schema drift may occur between backend updates
 - LLM parsing quality cannot be automatically tested
-- Performance under production load is unknown
